@@ -175,60 +175,21 @@ local function liquidRipple(parent, pos, color, maxSize)
 		{Transparency = 1, Thickness = 0.2})
 	Debris:AddItem(r, 0.8)
 end
-
 local function makeYinYang(parent, size, pos, spin, z)
 	z = z or 5
-	local h = new("Frame", {Parent = parent, Size = UDim2.fromOffset(size, size),
-		Position = pos, AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = z,
-		BackgroundColor3 = Theme.Yang, ClipsDescendants = true,
-	}, { circle(), stroke(Color3.new(1,1,1), 1, 0.4) })
-	local function part(p)
-		p.ZIndex = z; return p
-	end
-	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,1), Position=UDim2.fromScale(0.5,0),
-		BackgroundColor3=Theme.Yin, BorderSizePixel=0}))
-	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,0.5), Position=UDim2.fromScale(0.5,0.25),
-		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yin, BorderSizePixel=0},{circle()}))
-	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,0.5), Position=UDim2.fromScale(0.5,0.75),
-		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yang, BorderSizePixel=0},{circle()}))
-	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.16,0.16), Position=UDim2.fromScale(0.5,0.25),
-		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yang, BorderSizePixel=0},{circle()})).ZIndex = z+1
-	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.16,0.16), Position=UDim2.fromScale(0.5,0.75),
-		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yin, BorderSizePixel=0},{circle()})).ZIndex = z+1
-	if spin then
-		RunService.RenderStepped:Connect(function(dt)
-			if h.Parent then h.Rotation = (h.Rotation + dt * 22) % 360 end
-		end)
-	end
-	return h
+	local img = new("ImageLabel", {
+		Parent = parent,
+		Size = UDim2.fromOffset(size, size),
+		Position = pos,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		ZIndex = z,
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://ใส่ไอดีรูปตรงนี้", -- ใส่ Asset ID รูปของคุณตรงนี้
+	})
+	return img
 end
 
-local function makeDraggable(frame, handle)
-	local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
-	handle.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-		or input.UserInputType == Enum.UserInputType.Touch then
-			dragging, dragStart, startPos = true, input.Position, frame.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then dragging = false end
-			end)
-		end
-	end)
-	handle.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement
-		or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-	end)
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and input == dragInput then
-			local d  = input.Position - dragStart
-			local vp = workspace.CurrentCamera.ViewportSize
-			local hw, hh = frame.AbsoluteSize.X / 2, frame.AbsoluteSize.Y / 2
-			local x = math.clamp(startPos.X.Offset + d.X, -vp.X/2 + hw, vp.X/2 - hw)
-			local y = math.clamp(startPos.Y.Offset + d.Y, -vp.Y/2 + hh, vp.Y/2 - hh)
-			frame.Position = UDim2.new(0.5, x, 0.5, y)
-		end
-	end)
-end
+
 
 --==============================================================
 --  MAIN LIBRARY INIT
