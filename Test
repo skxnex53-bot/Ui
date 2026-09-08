@@ -1,0 +1,443 @@
+--==============================================================
+--  ☯  YIN–YANG UI LIBRARY v4 (MODULAR EDITION)
+--  ModuleScript -> ReplicatedStorage.YinYangLibrary
+--==============================================================
+local TweenService     = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
+local Players          = game:GetService("Players")
+local Debris           = game:GetService("Debris")
+local Lighting         = game:GetService("Lighting")
+
+local Library = {}
+Library.__index = Library
+
+local BASE_W, BASE_H = 560, 380
+
+local Theme = {
+	Glass   = Color3.fromRGB(26, 28, 38),
+	Panel   = Color3.fromRGB(20, 22, 30),
+	Card    = Color3.fromRGB(40, 44, 58),
+	CardHov = Color3.fromRGB(56, 62, 80),
+	Stroke  = Color3.fromRGB(125, 135, 170),
+	Text    = Color3.fromRGB(240, 242, 250),
+	Sub     = Color3.fromRGB(150, 156, 178),
+	Yin     = Color3.fromRGB(16, 16, 20),
+	Yang    = Color3.fromRGB(247, 248, 255),
+	Off     = Color3.fromRGB(70, 74, 92),
+	Aqua    = Color3.fromRGB(120, 220, 255),
+	Violet  = Color3.fromRGB(180, 150, 255),
+	Rose    = Color3.fromRGB(255, 150, 200),
+}
+
+local SPRING  = TweenInfo.new(0.45, Enum.EasingStyle.Back,    Enum.EasingDirection.Out)
+local POP     = TweenInfo.new(0.28, Enum.EasingStyle.Back,    Enum.EasingDirection.Out)
+local SMOOTH  = TweenInfo.new(0.25, Enum.EasingStyle.Quart,   Enum.EasingDirection.Out)
+local QUINT   = TweenInfo.new(0.35, Enum.EasingStyle.Quint,   Enum.EasingDirection.Out)
+local LIQUID  = TweenInfo.new(0.75, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+
+local NO_TWEEN = { NumberSequence = true, ColorSequence = true, NumberRange = true }
+
+local function tw(obj, info, props)
+	if not obj or not obj.Parent then return nil end
+	local safe = {}
+	for k, v in pairs(props) do
+		if NO_TWEEN[typeof(v)] then
+			pcall(function() obj[k] = v end)
+		else
+			safe[k] = v
+		end
+	end
+	local ok, t = pcall(TweenService.Create, TweenService, obj, info, safe)
+	if not ok or not t then return nil end
+	t:Play()
+	return t
+end
+
+local gradTask = {}
+local function fadeGrad(grad, from, to, dur)
+	local id = tick() + math.random()
+	gradTask[grad] = id
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < dur do
+			if gradTask[grad] ~= id or not grad.Parent then return end
+			local a = (os.clock() - t0) / dur
+			a = 1 - (1 - a) ^ 3
+			grad.Transparency = NumberSequence.new(from + (to - from) * a)
+			task.wait()
+		end
+		if gradTask[grad] == id and grad.Parent then
+			grad.Transparency = NumberSequence.new(to)
+		end
+	end)
+end
+
+local function rnd(a, b) return a + math.random() * (b - a) end
+
+local function new(class, props, kids)
+	local o = Instance.new(class)
+	for k, v in pairs(props or {}) do if k ~= "Parent" then o[k] = v end end
+	for _, c in ipairs(kids or {}) do c.Parent = o end
+	if props and props.Parent then o.Parent = props.Parent end
+	return o
+end
+
+local function corner(r) return new("UICorner", {CornerRadius = UDim.new(0, r)}) end
+local function circle()  return new("UICorner", {CornerRadius = UDim.new(1, 0)}) end
+local function stroke(c, t, tr)
+	return new("UIStroke", {Color = c or Theme.Stroke, Thickness = t or 1,
+		Transparency = tr or 0, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
+end
+
+local function applyGlass(frame, transparency, tint)
+	frame.BackgroundColor3       = tint or Theme.Glass
+	frame.BackgroundTransparency = transparency or 0.28
+
+	new("UIGradient", {Parent = frame, Rotation = 90,
+		Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(160, 170, 205)),
+			ColorSequenceKeypoint.new(1.00, Color3.fromRGB( 95, 100, 130)),
+		}})
+
+	local s = stroke(Color3.fromRGB(255, 255, 255), 1.3, 0.45)
+	s.Parent = frame
+	new("UIGradient", {Parent = s, Rotation = 90,
+		Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.40, Color3.fromRGB(110, 120, 155)),
+			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(200, 210, 245)),
+		}})
+
+	local hl = new("Frame", {Parent = frame, BorderSizePixel = 0, ZIndex = frame.ZIndex + 1,
+		BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.55,
+		Position = UDim2.new(0, 8, 0, 2), Size = UDim2.new(1, -16, 0, 1)})
+	new("UIGradient", {Parent = hl, Transparency = NumberSequence.new{
+		NumberSequenceKeypoint.new(0.0, 1), NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1.0, 1)}})
+	return s
+end
+
+local function sheen(frame, dur, z)
+	local band = new("Frame", {Parent = frame, BorderSizePixel = 0,
+		BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.86,
+		AnchorPoint = Vector2.new(0.5, 0.5), Rotation = 16, ZIndex = z or 8,
+		Position = UDim2.new(-0.35, 0, 0.5, 0), Size = UDim2.new(0.22, 0, 2.2, 0)})
+	new("UIGradient", {Parent = band, Transparency = NumberSequence.new{
+		NumberSequenceKeypoint.new(0.0, 1), NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1.0, 1)}})
+	tw(band, TweenInfo.new(dur or 0.9, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+		{Position = UDim2.new(1.35, 0, 0.5, 0)})
+	Debris:AddItem(band, (dur or 0.9) + 0.2)
+	return band
+end
+
+local function caustics(parent, count)
+	for i = 1, (count or 4) do
+		local sz  = math.random(120, 240)
+		local col = ({Theme.Aqua, Theme.Violet, Theme.Rose})[math.random(1, 3)]
+		local b = new("Frame", {Parent = parent, ZIndex = 0, BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = col,
+			BackgroundTransparency = 0.9, Size = UDim2.fromOffset(sz, sz),
+			Position = UDim2.fromScale(rnd(0.1, 0.9), rnd(0.1, 0.9))}, { circle() })
+		new("UIGradient", {Parent = b, Transparency = NumberSequence.new{
+			NumberSequenceKeypoint.new(0.0, 0.35), NumberSequenceKeypoint.new(1.0, 1)}})
+		task.spawn(function()
+			while b.Parent do
+				local t = tw(b, TweenInfo.new(rnd(6, 11), Enum.EasingStyle.Sine,
+					Enum.EasingDirection.InOut), {
+					Position = UDim2.fromScale(rnd(0.05, 0.95), rnd(0.05, 0.95)),
+					Size = UDim2.fromOffset(sz * rnd(0.7, 1.3), sz * rnd(0.7, 1.3))})
+				if t then t.Completed:Wait() else break end
+			end
+		end)
+	end
+end
+
+local function liquidRipple(parent, pos, color, maxSize)
+	local r = new("Frame", {Parent = parent, ZIndex = 40, BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5), Position = pos,
+		BackgroundColor3 = color, BackgroundTransparency = 0.55,
+		Size = UDim2.fromOffset(6, 6)}, { circle() })
+	local rs = stroke(color, 2.4, 0.15); rs.Parent = r
+	tw(r,  TweenInfo.new(0.6, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+		{Size = UDim2.fromOffset(maxSize or 110, maxSize or 110), BackgroundTransparency = 1})
+	tw(rs, TweenInfo.new(0.6, Enum.EasingStyle.Quad,  Enum.EasingDirection.Out),
+		{Transparency = 1, Thickness = 0.2})
+	Debris:AddItem(r, 0.8)
+end
+
+local function makeYinYang(parent, size, pos, spin, z)
+	z = z or 5
+	local h = new("Frame", {Parent = parent, Size = UDim2.fromOffset(size, size),
+		Position = pos, AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = z,
+		BackgroundColor3 = Theme.Yang, ClipsDescendants = true,
+	}, { circle(), stroke(Color3.new(1,1,1), 1, 0.4) })
+	local function part(p) p.ZIndex = z; return p end
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,1), Position=UDim2.fromScale(0.5,0), BackgroundColor3=Theme.Yin, BorderSizePixel=0}))
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,0.5), Position=UDim2.fromScale(0.5,0.25), AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yin, BorderSizePixel=0},{circle()}))
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,0.5), Position=UDim2.fromScale(0.5,0.75), AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yang, BorderSizePixel=0},{circle()}))
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.16,0.16), Position=UDim2.fromScale(0.5,0.25), AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yang, BorderSizePixel=0},{circle()})).ZIndex = z+1
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.16,0.16), Position=UDim2.fromScale(0.5,0.75), AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yin, BorderSizePixel=0},{circle()})).ZIndex = z+1
+	if spin then
+		RunService.RenderStepped:Connect(function(dt)
+			if h.Parent then h.Rotation = (h.Rotation + dt * 22) % 360 end
+		end)
+	end
+	return h
+end
+
+local function card(parent, h)
+	local f = new("Frame", {Parent = parent, ZIndex = 4, Size = UDim2.new(1,-6,0,h),
+		ClipsDescendants = true}, { corner(12) })
+	local cs = applyGlass(f, 0.42, Theme.Card)
+
+	local wet = new("Frame", {Parent = f, ZIndex = 3, BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5,0.5), Size = UDim2.fromOffset(150,150),
+		BackgroundColor3 = Color3.new(1,1,1), BackgroundTransparency = 1,
+		Position = UDim2.fromScale(0.5,0.5)}, { circle() })
+	new("UIGradient", {Parent = wet, Transparency = NumberSequence.new{
+		NumberSequenceKeypoint.new(0, 0.78), NumberSequenceKeypoint.new(1, 1)}})
+
+	f.MouseMoved:Connect(function(x, y)
+		local rel = Vector2.new(x, y) - f.AbsolutePosition
+		wet.Position = UDim2.fromScale(rel.X / math.max(f.AbsoluteSize.X,1), rel.Y / math.max(f.AbsoluteSize.Y,1))
+	end)
+	f.MouseEnter:Connect(function()
+		tw(f,  SMOOTH, {BackgroundColor3 = Theme.CardHov, BackgroundTransparency = 0.3})
+		tw(cs, SMOOTH, {Transparency = 0.15, Thickness = 1.8})
+		tw(wet, SMOOTH, {BackgroundTransparency = 0})
+		sheen(f, 0.75, 9)
+	end)
+	f.MouseLeave:Connect(function()
+		tw(f,  SMOOTH, {BackgroundColor3 = Theme.Card, BackgroundTransparency = 0.42})
+		tw(cs, SMOOTH, {Transparency = 0.45, Thickness = 1.3})
+		tw(wet, SMOOTH, {BackgroundTransparency = 1})
+	end)
+	return f, cs
+end
+
+local function label(p, t)
+	return new("TextLabel", {Parent = p, ZIndex = 6, BackgroundTransparency = 1,
+		Position = UDim2.new(0,14,0,0), Size = UDim2.new(0.5,0,0,44), Text = t,
+		Font = Enum.Font.GothamMedium, TextSize = 12.5, TextColor3 = Theme.Text,
+		TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd})
+end
+
+--==============================================================
+--  MAIN CREATION METHOD
+--==============================================================
+function Library.CreateWindow(config)
+	config = config or {}
+	local title = config.Title or "YIN · YANG"
+	local soundOn = config.Sound ~= false
+
+	local gui = new("ScreenGui", {
+		Name = "YinYangGlassUI", ResetOnSpawn = false, IgnoreGuiInset = true,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
+	})
+
+	local blur
+	pcall(function()
+		blur = new("BlurEffect", {Name = "YYBlur", Size = 0, Parent = Lighting})
+	end)
+
+	local window = new("Frame", {
+		Name = "Window", Parent = gui,
+		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(BASE_W, BASE_H),
+		ClipsDescendants = true, Visible = false,
+	}, { corner(18) })
+	local winStroke = applyGlass(window, 0.14)
+	local uiScale   = new("UIScale", {Parent = window, Scale = 0})
+
+	local glassBed = new("Frame", {Parent = window, ZIndex = 0, BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1), ClipsDescendants = true}, { corner(18) })
+	caustics(glassBed, 5)
+
+	local fxLayer = new("Frame", {Parent = window, BackgroundTransparency = 1, Active = false,
+		Size = UDim2.fromScale(1,1), ZIndex = 90, ClipsDescendants = true})
+
+	local function toLayer(obj)
+		local s = math.max(uiScale.Scale, 0.001)
+		local c = obj.AbsolutePosition + obj.AbsoluteSize / 2
+		local o = (c - window.AbsolutePosition) / s
+		return UDim2.fromOffset(math.floor(o.X), math.floor(o.Y))
+	end
+
+	local function burst(center, color, count, power)
+		count, power = count or 14, power or 34
+		for i = 1, count do
+			local ang  = math.rad((360 / count) * i + rnd(-16, 16))
+			local dist = rnd(power * 0.55, power)
+			local sz   = math.random(3, 7)
+			local p = new("Frame", {Parent = fxLayer, AnchorPoint = Vector2.new(0.5,0.5),
+				Position = center, Size = UDim2.fromOffset(sz, sz), BackgroundColor3 = color,
+				BorderSizePixel = 0, ZIndex = 96}, { circle() })
+			tw(p, TweenInfo.new(rnd(0.45, 0.75), Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+				Position = UDim2.fromOffset(center.X.Offset + math.cos(ang) * dist, center.Y.Offset + math.sin(ang) * dist),
+				Size = UDim2.fromOffset(0,0), BackgroundTransparency = 1})
+			Debris:AddItem(p, 0.9)
+		end
+	end
+
+	local function shockwave(center, color, maxSize, thick)
+		local ring = new("Frame", {Parent = fxLayer, AnchorPoint = Vector2.new(0.5,0.5),
+			Position = center, Size = UDim2.fromOffset(14,14), BackgroundTransparency = 1, ZIndex = 94}, { circle() })
+		local rs = stroke(color, thick or 2.5, 0.1); rs.Parent = ring
+		tw(ring, TweenInfo.new(0.6, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.fromOffset(maxSize or 78, maxSize or 78)})
+		tw(rs, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 1, Thickness = 0.2})
+		Debris:AddItem(ring, 0.8)
+	end
+
+	local function click(pitch)
+		if not soundOn then return end
+		pcall(function()
+			local s = Instance.new("Sound")
+			s.SoundId = "rbxassetid://6042053626"
+			s.Volume, s.PlaybackSpeed = 0.35, pitch or 1
+			s.Parent = gui; s:Play(); Debris:AddItem(s, 2)
+		end)
+	end
+
+	-- Sidebar & Navigation
+	local sidebar = new("Frame", {Parent = window, ZIndex = 2, Size = UDim2.new(0, 150, 1, 0), ClipsDescendants = true}, { corner(18) })
+	applyGlass(sidebar, 0.55, Theme.Panel)
+
+	local logo = makeYinYang(sidebar, 52, UDim2.new(0.5, 0, 0, 50), true, 6)
+	new("TextLabel", {Parent = sidebar, ZIndex = 6, BackgroundTransparency = 1, Text = title,
+		Position = UDim2.new(0,0,0,82), Size = UDim2.new(1,0,0,18),
+		Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Text})
+	new("TextLabel", {Parent = sidebar, ZIndex = 6, BackgroundTransparency = 1, Text = "liquid glass",
+		Position = UDim2.new(0,0,0,99), Size = UDim2.new(1,0,0,14),
+		Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = Theme.Sub})
+
+	local tabHolder = new("Frame", {Parent = sidebar, ZIndex = 6, BackgroundTransparency = 1,
+		Position = UDim2.new(0,10,0,128), Size = UDim2.new(1,-22,1,-142),
+	}, { new("UIListLayout", {Padding = UDim.new(0,8), SortOrder = Enum.SortOrder.LayoutOrder}) })
+
+	local tabGlow = new("Frame", {Parent = sidebar, ZIndex = 8, Size = UDim2.new(0,3,0,18),
+		Position = UDim2.new(0,3,0,137), BackgroundColor3 = Theme.Aqua, BorderSizePixel = 0}, { circle(), stroke(Theme.Aqua, 3, 0.6) })
+
+	local content = new("Frame", {Parent = window, ZIndex = 3, BackgroundTransparency = 1,
+		Position = UDim2.new(0,150,0,0), Size = UDim2.new(1,-150,1,0), ClipsDescendants = true})
+
+	local titleLabel = new("TextLabel", {Parent = content, ZIndex = 4, BackgroundTransparency = 1,
+		Position = UDim2.new(0,18,0,18), Size = UDim2.new(1,-90,0,22), Text = "",
+		Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left})
+
+	-- Drag & Close
+	local dragBar = new("TextButton", {Parent = window, Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.new(1,0,0,44), ZIndex = 50})
+	local closeBtn = new("TextButton", {Parent = window, Text = "✕", AutoButtonColor = false, ZIndex = 60, AnchorPoint = Vector2.new(1,0.5), Position = UDim2.new(1,-14,0,29), Size = UDim2.fromOffset(26,26), BackgroundColor3 = Theme.Card, BackgroundTransparency = 0.35, Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Sub}, { circle(), stroke(Color3.new(1,1,1), 1, 0.55) })
+
+	local function makeDraggable(frame, handle)
+		local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
+		handle.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging, dragStart, startPos = true, input.Position, frame.Position
+				input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+			end
+		end)
+		handle.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and input == dragInput then
+				local d = input.Position - dragStart
+				local vp = workspace.CurrentCamera.ViewportSize
+				local hw, hh = frame.AbsoluteSize.X / 2, frame.AbsoluteSize.Y / 2
+				local x = math.clamp(startPos.X.Offset + d.X, -vp.X/2 + hw, vp.X/2 - hw)
+				local y = math.clamp(startPos.Y.Offset + d.Y, -vp.Y/2 + hh, vp.Y/2 - hh)
+				frame.Position = UDim2.new(0.5, x, 0.5, y)
+			end
+		end)
+	end
+	makeDraggable(window, dragBar)
+
+	local pages, buttons, activeTab = {}, {}, nil
+	local tabOrder = 0
+
+	local function playPageEpicTransition(pageName, accentColor)
+		local centerPos = UDim2.fromOffset(
+			(content.AbsolutePosition.X - window.AbsolutePosition.X) + content.AbsoluteSize.X / 2,
+			(content.AbsolutePosition.Y - window.AbsolutePosition.Y) + content.AbsoluteSize.Y / 2
+		)
+
+		click(1.35)
+		task.delay(0.08, function() click(1.75) end)
+		task.delay(0.16, function() click(2.15) end)
+
+		local primaryColor = accentColor or Theme.Aqua
+		local secondaryColor = (primaryColor == Theme.Aqua) and Theme.Violet or Theme.Rose
+
+		shockwave(centerPos, primaryColor, 260, 4)
+		task.delay(0.06, function() shockwave(centerPos, secondaryColor, 340, 3) end)
+
+		for i = 1, 24 do
+			local ang  = math.rad((360 / 24) * i + rnd(-15, 15))
+			local dist = rnd(90, 220)
+			local sz   = math.random(4, 9)
+			local col  = ({primaryColor, secondaryColor, Theme.Yang})[math.random(1, 3)]
+			local p = new("Frame", {Parent = fxLayer, AnchorPoint = Vector2.new(0.5, 0.5), Position = centerPos, Size = UDim2.fromOffset(sz, sz), BackgroundColor3 = col, BorderSizePixel = 0, ZIndex = 98}, { circle() })
+			tw(p, TweenInfo.new(rnd(0.55, 0.95), Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Position = UDim2.fromOffset(centerPos.X.Offset + math.cos(ang) * dist, centerPos.Y.Offset + math.sin(ang) * dist),
+				Size = UDim2.fromOffset(0, 0), BackgroundTransparency = 1
+			})
+			Debris:AddItem(p, 1.0)
+		end
+
+		sheen(window, 0.5, 90)
+
+		local page = pages[pageName]
+		if page then
+			local cardIndex = 0
+			local slideDirection = (pageName:find("1") or pageName:lower():find("alt")) and 45 or -45
+			for _, child in ipairs(page:GetChildren()) do
+				if child:IsA("Frame") then
+					cardIndex = cardIndex + 1
+					local origY = child.Position.Y.Offset
+					child.Position = UDim2.new(0, slideDirection, 0, origY)
+					child.BackgroundTransparency = 0.95
+					task.delay(cardIndex * 0.04, function()
+						tw(child, TweenInfo.new(0.48, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+							Position = UDim2.new(0, 0, 0, origY), BackgroundTransparency = 0.42
+						})
+						sheen(child, 0.5, 10)
+					end)
+				end
+			end
+		end
+	end
+
+	local function switchTab(name)
+		if activeTab == name then return end
+		local old = activeTab; activeTab = name
+
+		if old then
+			local p = pages[old]
+			tw(buttons[old], SMOOTH, {BackgroundTransparency = 1, TextColor3 = Theme.Sub})
+			local os = buttons[old]:FindFirstChildOfClass("UIStroke")
+			if os then tw(os, SMOOTH, {Transparency = 1}) end
+
+			local exitX = (name:find("1") or name:lower():find("alt")) and -24 or 24
+			tw(p, TweenInfo.new(0.18), {Position = UDim2.new(0, exitX, 0, 62)})
+			task.delay(0.18, function() if activeTab ~= old then p.Visible = false end end)
+		end
+
+		local p = pages[name]
+		local enterX = (name:find("1") or name:lower():find("alt")) and 34 or -34
+		p.Position = UDim2.new(0, enterX, 0, 62); p.Visible = true
+		tw(p, QUINT, {Position = UDim2.new(0,12,0,62)})
+
+		local b = buttons[name]
+		tw(b, SMOOTH, {BackgroundTransparency = 0.4, TextColor3 = Theme.Text})
+		local bs = b:FindFirstChildOfClass("UIStroke")
+		if bs then tw(bs, SMOOTH, {Transparency = 0.4}) end
+		sheen(b, 0.7, 9)
+
+		-- Capsule Animation
+		local bScale = b:FindFirstChildOfClass("UIScale")
+		if bScale then
+			tw(bScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
