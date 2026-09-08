@@ -162,21 +162,12 @@ local function caustics(parent, count)
 		end)
 	end
 end
+local MarketplaceService = game:GetService("MarketplaceService")
 
-local function liquidRipple(parent, pos, color, maxSize)
-	local r = new("Frame", {Parent = parent, ZIndex = 40, BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5), Position = pos,
-		BackgroundColor3 = color, BackgroundTransparency = 0.55,
-		Size = UDim2.fromOffset(6, 6)}, { circle() })
-	local rs = stroke(color, 2.4, 0.15); rs.Parent = r
-	tw(r,  TweenInfo.new(0.6, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-		{Size = UDim2.fromOffset(maxSize or 110, maxSize or 110), BackgroundTransparency = 1})
-	tw(rs, TweenInfo.new(0.6, Enum.EasingStyle.Quad,  Enum.EasingDirection.Out),
-		{Transparency = 1, Thickness = 0.2})
-	Debris:AddItem(r, 0.8)
-end
 local function makeYinYang(parent, size, pos, spin, z)
 	z = z or 5
+	local id = "81625827158162"
+
 	local img = new("ImageLabel", {
 		Parent = parent,
 		Size = UDim2.fromOffset(size, size),
@@ -184,10 +175,22 @@ local function makeYinYang(parent, size, pos, spin, z)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		ZIndex = z,
 		BackgroundTransparency = 1,
-		Image = "rbxassetid://ใส่ไอดีรูปตรงนี้", -- ใส่ Asset ID รูปของคุณตรงนี้
+		Image = "rbxassetid://" .. id, -- ลองใช้รูปแบบปกติก่อน
 	})
+
+	-- ระบบสำรอง: หากรูปแบบแรกโหลดไม่สำเร็จ จะสลับไปใช้รูปแบบ Asset URL โดยอัตโนมัติ
+	task.spawn(function()
+		task.wait(0.3)
+		if not img.IsLoaded then
+			-- สำรองวิธีที่ 1: เปลี่ยนรูปแบบเป็น Asset URL ดั้งเดิม
+			img.Image = "http://www.roblox.com/asset/?id=" .. id
+		end
+	end)
+
 	return img
 end
+
+
 
 
 
