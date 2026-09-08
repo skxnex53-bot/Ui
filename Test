@@ -162,6 +162,7 @@ local function caustics(parent, count)
 		end)
 	end
 end
+
 local function makeYinYang(parent, size, pos, spin, z)
 	z = z or 5
 	local img = new("ImageLabel", {
@@ -171,7 +172,8 @@ local function makeYinYang(parent, size, pos, spin, z)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		ZIndex = z,
 		BackgroundTransparency = 1,
-		Image = "rbxassetid://81625827158162",
+		-- ใช้ rbxthumb เพื่อให้ดึงรูปจาก Decal ID หน้าเว็บได้โดยตรง
+		Image = "rbxthumb://type=Asset&id=81625827158162&w=420&h=420",
 	})
 	return img
 end
