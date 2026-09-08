@@ -162,12 +162,8 @@ local function caustics(parent, count)
 		end)
 	end
 end
-local MarketplaceService = game:GetService("MarketplaceService")
-
 local function makeYinYang(parent, size, pos, spin, z)
 	z = z or 5
-	local id = "81625827158162"
-
 	local img = new("ImageLabel", {
 		Parent = parent,
 		Size = UDim2.fromOffset(size, size),
@@ -175,22 +171,10 @@ local function makeYinYang(parent, size, pos, spin, z)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		ZIndex = z,
 		BackgroundTransparency = 1,
-		Image = "rbxassetid://" .. id, -- ลองใช้รูปแบบปกติก่อน
+		Image = "rbxassetid://81625827158162",
 	})
-
-	-- ระบบสำรอง: หากรูปแบบแรกโหลดไม่สำเร็จ จะสลับไปใช้รูปแบบ Asset URL โดยอัตโนมัติ
-	task.spawn(function()
-		task.wait(0.3)
-		if not img.IsLoaded then
-			-- สำรองวิธีที่ 1: เปลี่ยนรูปแบบเป็น Asset URL ดั้งเดิม
-			img.Image = "http://www.roblox.com/asset/?id=" .. id
-		end
-	end)
-
 	return img
 end
-
-
 
 
 
