@@ -277,10 +277,10 @@ function Library.new(titleText)
 		BackgroundTransparency = 0.75, BorderSizePixel = 0})
 
 	makeYinYang(self.Sidebar, 52, UDim2.new(0.5, 0, 0, 50), true, 6)
-	new("TextLabel", {Parent = self.Sidebar, ZIndex = 6, BackgroundTransparency = 1, Text = "YIN · YANG",
+	new("TextLabel", {Parent = self.Sidebar, ZIndex = 6, BackgroundTransparency = 1, Text = "Nitro Hub",
 		Position = UDim2.new(0,0,0,82), Size = UDim2.new(1,0,0,18),
 		Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Text})
-	new("TextLabel", {Parent = self.Sidebar, ZIndex = 6, BackgroundTransparency = 1, Text = "liquid glass",
+	new("TextLabel", {Parent = self.Sidebar, ZIndex = 6, BackgroundTransparency = 1, Text = "ไม่รู้วะ",
 		Position = UDim2.new(0,0,0,99), Size = UDim2.new(1,0,0,14),
 		Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = Theme.Sub})
 
