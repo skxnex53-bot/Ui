@@ -163,22 +163,33 @@ local function caustics(parent, count)
 	end
 end
 
+--แก้ตัวนี้ใช่ไหม
 local function makeYinYang(parent, size, pos, spin, z)
 	z = z or 5
-	local img = new("ImageLabel", {
-		Parent = parent,
-		Size = UDim2.fromOffset(size, size),
-		Position = pos,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		ZIndex = z,
-		BackgroundTransparency = 1,
-		-- ใช้ rbxthumb เพื่อให้ดึงรูปจาก Decal ID หน้าเว็บได้โดยตรง
-		Image = "rbxthumb://type=Asset&id=81625827158162&w=420&h=420",
-	})
-	return img
+	local h = new("Frame", {Parent = parent, Size = UDim2.fromOffset(size, size),
+		Position = pos, AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = z,
+		BackgroundColor3 = Theme.Yang, ClipsDescendants = true,
+	}, { circle(), stroke(Color3.new(1,1,1), 1, 0.4) })
+	local function part(p)
+		p.ZIndex = z; return p
+	end
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,1), Position=UDim2.fromScale(0.5,0),
+		BackgroundColor3=Theme.Yin, BorderSizePixel=0}))
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,0.5), Position=UDim2.fromScale(0.5,0.25),
+		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yin, BorderSizePixel=0},{circle()}))
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.5,0.5), Position=UDim2.fromScale(0.5,0.75),
+		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yang, BorderSizePixel=0},{circle()}))
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.16,0.16), Position=UDim2.fromScale(0.5,0.25),
+		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yang, BorderSizePixel=0},{circle()})).ZIndex = z+1
+	part(new("Frame", {Parent=h, Size=UDim2.fromScale(0.16,0.16), Position=UDim2.fromScale(0.5,0.75),
+		AnchorPoint=Vector2.new(0.5,0.5), BackgroundColor3=Theme.Yin, BorderSizePixel=0},{circle()})).ZIndex = z+1
+	if spin then
+		RunService.RenderStepped:Connect(function(dt)
+			if h.Parent then h.Rotation = (h.Rotation + dt * 22) % 360 end
+		end)
+	end
+	return h
 end
-
-
 
 --==============================================================
 --  MAIN LIBRARY INIT
