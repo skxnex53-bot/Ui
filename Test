@@ -437,7 +437,193 @@ function Library.CreateWindow(config)
 		if bs then tw(bs, SMOOTH, {Transparency = 0.4}) end
 		sheen(b, 0.7, 9)
 
-		-- Capsule Animation
+        	-- Capsule Animation
 		local bScale = b:FindFirstChildOfClass("UIScale")
 		if bScale then
-			tw(bScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+			tw(bScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Scale = 0.92})
+			task.delay(0.1, function() tw(bScale, SPRING, {Scale = 1}) end)
+		end
+
+		local themeCol = (name:find("1") or name:lower():find("alt")) and Theme.Aqua or Theme.Rose
+		local btnPos = toLayer(b)
+		liquidRipple(fxLayer, btnPos, themeCol, 100)
+		burst(btnPos, themeCol, 12, 28)
+
+		-- Capsule Glow Spring
+		local targetY = b.AbsolutePosition.Y - window.AbsolutePosition.Y + 9
+		tw(tabGlow, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 3, 0, targetY), Size = UDim2.new(0, 4, 0, 26), BackgroundColor3 = themeCol
+		})
+		task.delay(0.18, function() tw(tabGlow, SPRING, {Size = UDim2.new(0, 3, 0, 18)}) end)
+
+		titleLabel.Text = name
+		titleLabel.Position = UDim2.new(0,28,0,18)
+		titleLabel.TextTransparency = 1
+		tw(titleLabel, QUINT, {Position = UDim2.new(0,18,0,18), TextTransparency = 0})
+
+		if old then click(1.05) end
+		playPageEpicTransition(name, themeCol)
+	end
+
+	-- Window API Output
+	local WindowAPI = {}
+
+	function WindowAPI:CreateTab(name)
+		tabOrder = tabOrder + 1
+		local page = new("ScrollingFrame", {Parent = content, ZIndex = 4, BackgroundTransparency = 1, Visible = false, Position = UDim2.new(0,12,0,62), Size = UDim2.new(1,-24,1,-76), ScrollBarThickness = 3, ScrollBarImageColor3 = Theme.Stroke, ScrollBarImageTransparency = 0.4, BorderSizePixel = 0, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y}, {
+			new("UIListLayout", {Padding = UDim.new(0,10), SortOrder = Enum.SortOrder.LayoutOrder}),
+			new("UIPadding", {PaddingTop = UDim.new(0,4), PaddingBottom = UDim.new(0,14)}),
+		})
+
+		local btn = new("TextButton", {Parent = tabHolder, ZIndex = 6, LayoutOrder = tabOrder, Size = UDim2.new(1,0,0,36), BackgroundColor3 = Theme.Card, BackgroundTransparency = 1, Text = name, Font = Enum.Font.GothamMedium, TextSize = 12.5, TextColor3 = Theme.Sub, AutoButtonColor = false, ClipsDescendants = true}, { corner(10), stroke(Color3.new(1,1,1), 1, 1) })
+		new("UIScale", {Parent = btn, Scale = 1})
+
+		pages[name], buttons[name] = page, btn
+
+		btn.MouseEnter:Connect(function()
+			if activeTab ~= name then tw(btn, SMOOTH, {BackgroundTransparency = 0.7, TextColor3 = Theme.Text}); sheen(btn, 0.55, 9) end
+		end)
+		btn.MouseLeave:Connect(function()
+			if activeTab ~= name then tw(btn, SMOOTH, {BackgroundTransparency = 1, TextColor3 = Theme.Sub}) end
+		end)
+		btn.MouseButton1Click:Connect(function() switchTab(name) end)
+
+		if activeTab == nil then task.defer(function() switchTab(name) end) end
+
+		local TabAPI = {}
+
+		function TabAPI:AddToggle(text, default, cb)
+			local f   = card(page, 50)
+			local lbl = label(f, text)
+			local state = default and true or false
+			local ON_L, OFF_L, KNOB = UDim2.new(1,-23,0.5,0), UDim2.new(0,3,0.5,0), 19
+
+			local track = new("TextButton", {Parent = f, Text = "", AutoButtonColor = false, ZIndex = 6, AnchorPoint = Vector2.new(1,0.5), Position = UDim2.new(1,-14,0.5,0), Size = UDim2.fromOffset(52,26), ClipsDescendants = true, BackgroundColor3 = state and Theme.Yang or Theme.Off, BackgroundTransparency = state and 0.05 or 0.35}, { circle() })
+			local tScale  = new("UIScale", {Parent = track, Scale = 1})
+			local tStroke = stroke(Color3.new(1,1,1), 1.4, 0.4); tStroke.Parent = track
+
+			local grad = new("UIGradient", {Parent = track, Rotation = 0, Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.35, Theme.Aqua), ColorSequenceKeypoint.new(0.65, Theme.Violet), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,255,255))}, Transparency = NumberSequence.new(state and 0 or 1)})
+			local knob = new("Frame", {Parent = track, ZIndex = 8, Size = UDim2.fromOffset(KNOB,KNOB), AnchorPoint = Vector2.new(0,0.5), Position = state and ON_L or OFF_L, BackgroundColor3 = Theme.Yang, BorderSizePixel = 0}, { circle() })
+			local knobDot = new("Frame", {Parent = knob, ZIndex = 9, Size = UDim2.fromOffset(7,7), AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.fromScale(0.5,0.5), BackgroundColor3 = state and Theme.Aqua or Theme.Off, BorderSizePixel = 0}, { circle() })
+
+			local busy = false
+			track.MouseButton1Click:Connect(function()
+				if busy then return end
+				busy = true; state = not state
+				tw(track, SMOOTH, {BackgroundColor3 = state and Theme.Yang or Theme.Off, BackgroundTransparency = state and 0.05 or 0.35})
+				tw(knob, SPRING, {Position = state and ON_L or OFF_L})
+				tw(knobDot, SMOOTH, {BackgroundColor3 = state and Theme.Aqua or Theme.Off})
+				fadeGrad(grad, state and 1 or 0, state and 0 or 1, 0.3)
+				click(state and 1.15 or 0.85)
+				if cb then task.spawn(cb, state) end
+				task.delay(0.18, function() busy = false end)
+			end)
+		end
+
+		function TabAPI:AddSlider(text, min, max, default, cb)
+			local f = card(page, 60); label(f, text)
+			local value = math.clamp(default, min, max)
+			local vBox = new("TextLabel", {Parent = f, ZIndex = 6, BackgroundTransparency = 1, AnchorPoint = Vector2.new(1,0), Position = UDim2.new(1,-14,0,0), Size = UDim2.fromOffset(58,42), Text = tostring(value), Font = Enum.Font.GothamBold, TextSize = 12.5, TextColor3 = Theme.Sub, TextXAlignment = Enum.TextXAlignment.Right})
+			local bar = new("Frame", {Parent = f, ZIndex = 6, Position = UDim2.new(0,14,0,40), Size = UDim2.new(1,-28,0,7), BackgroundColor3 = Theme.Off, BackgroundTransparency = 0.35, BorderSizePixel = 0, ClipsDescendants = true}, { circle() })
+			local fill = new("Frame", {Parent = bar, ZIndex = 6, BorderSizePixel = 0, Size = UDim2.fromScale((value-min)/(max-min),1), BackgroundColor3 = Theme.Aqua}, { circle() })
+			local knob = new("Frame", {Parent = bar, Size = UDim2.fromOffset(15,15), ZIndex = 9, AnchorPoint = Vector2.new(0.5,0.5), BorderSizePixel = 0, Position = UDim2.fromScale((value-min)/(max-min),0.5), BackgroundColor3 = Theme.Yang}, { circle() })
+			local hit = new("TextButton", {Parent = bar, Text = "", BackgroundTransparency = 1, Size = UDim2.new(1,0,0,30), Position = UDim2.new(0,0,0.5,0), AnchorPoint = Vector2.new(0,0.5), ZIndex = 10, AutoButtonColor = false})
+
+			local dragging = false
+			local function set(px)
+				local a = math.clamp((px - bar.AbsolutePosition.X) / math.max(bar.AbsoluteSize.X,1), 0, 1)
+				value = math.floor(min + (max-min)*a + 0.5)
+				tw(fill, TweenInfo.new(0.1), {Size = UDim2.fromScale(a,1)})
+				tw(knob, TweenInfo.new(0.1), {Position = UDim2.fromScale(a,0.5)})
+				vBox.Text = tostring(value)
+				if cb then task.spawn(cb, value) end
+			end
+
+			hit.InputBegan:Connect(function(i)
+				if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+					dragging = true; set(i.Position.X)
+					i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
+				end
+			end)
+			UserInputService.InputChanged:Connect(function(i)
+				if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then set(i.Position.X) end
+			end)
+		end
+
+		function TabAPI:AddDropdown(text, options, cb)
+			local ROW = 46
+			local f = card(page, ROW); label(f, text)
+			local open = false
+			local selected = new("TextLabel", {Parent = f, ZIndex = 6, BackgroundTransparency = 1, AnchorPoint = Vector2.new(1,0), Position = UDim2.new(1,-34,0,0), Size = UDim2.fromOffset(112, ROW), Text = options[1] or "-", Font = Enum.Font.GothamMedium, TextSize = 11.5, TextColor3 = Theme.Sub, TextXAlignment = Enum.TextXAlignment.Right})
+			local arrow = new("TextLabel", {Parent = f, ZIndex = 6, BackgroundTransparency = 1, AnchorPoint = Vector2.new(1,0), Position = UDim2.new(1,-14,0,0), Size = UDim2.fromOffset(16, ROW), Text = "▾", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.Text})
+			local list = new("Frame", {Parent = f, ZIndex = 6, Position = UDim2.new(0,10,0,ROW), Size = UDim2.new(1,-20,0,0), BackgroundTransparency = 1, ClipsDescendants = true}, { new("UIListLayout", {Padding = UDim.new(0,5)}) })
+			local head = new("TextButton", {Parent = f, Text = "", BackgroundTransparency = 1, Size = UDim2.new(1,0,0,ROW), ZIndex = 7, AutoButtonColor = false})
+
+			head.MouseButton1Click:Connect(function()
+				open = not open
+				tw(f, open and SPRING or QUINT, {Size = UDim2.new(1,-6,0, open and (ROW + #options*33 + 10) or ROW)})
+				tw(arrow, SPRING, {Rotation = open and 180 or 0})
+				tw(list, SMOOTH, {Size = UDim2.new(1,-20,0, open and (#options*33) or 0)})
+				click(open and 1.1 or 0.9)
+			end)
+
+			for idx, opt in ipairs(options) do
+				local b = new("TextButton", {Parent = list, ZIndex = 6, Size = UDim2.new(1,0,0,28), Text = opt, LayoutOrder = idx, Font = Enum.Font.Gotham, TextSize = 11.5, TextColor3 = Theme.Sub, BackgroundColor3 = Theme.Panel, BackgroundTransparency = 0.5, AutoButtonColor = false}, { corner(8) })
+				b.MouseButton1Click:Connect(function()
+					selected.Text = opt
+					if cb then task.spawn(cb, opt) end
+					open = false
+					tw(f, QUINT, {Size = UDim2.new(1,-6,0, ROW)})
+					tw(arrow, SPRING, {Rotation = 0})
+					tw(list, SMOOTH, {Size = UDim2.new(1,-20,0, 0)})
+				end)
+			end
+		end
+
+		function TabAPI:AddTextBox(text, placeholder, cb)
+			local f = card(page, 46); label(f, text)
+			local box = new("TextBox", {Parent = f, ZIndex = 6, AnchorPoint = Vector2.new(1,0.5), Position = UDim2.new(1,-14,0.5,0), Size = UDim2.fromOffset(134,29), BackgroundColor3 = Theme.Panel, BackgroundTransparency = 0.35, Text = "", PlaceholderText = placeholder, TextColor3 = Theme.Text, Font = Enum.Font.Gotham, TextSize = 11.5, ClearTextOnFocus = false}, { corner(9) })
+			box.FocusLost:Connect(function(enter)
+				if enter and cb then task.spawn(cb, box.Text) end
+			end)
+		end
+
+		return TabAPI
+	end
+
+	-- Orb & Visibility Toggle
+	local orb = new("TextButton", {Parent = gui, Text = "", AutoButtonColor = false, Size = UDim2.fromOffset(48,48), AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.new(0.5,-262,0.5,0), ZIndex = 20, ClipsDescendants = true}, { circle() })
+	applyGlass(orb, 0.3, Theme.Panel)
+	makeYinYang(orb, 32, UDim2.fromScale(0.5,0.5), true, 24)
+	makeDraggable(orb, orb)
+
+	local targetScale = 1
+	local shown = false
+	local function setShown(v)
+		shown = v
+		if v then
+			window.Visible = true
+			uiScale.Scale = 0
+			tw(uiScale, SPRING, {Scale = targetScale})
+			if blur then tw(blur, TweenInfo.new(0.5), {Size = 18}) end
+		else
+			local t = tw(uiScale, TweenInfo.new(0.25), {Scale = 0})
+			if t then t.Completed:Once(function() window.Visible = false end) end
+			if blur then tw(blur, TweenInfo.new(0.4), {Size = 0}) end
+		end
+		click(v and 1.2 or 0.8)
+	end
+
+	orb.MouseButton1Click:Connect(function() setShown(not shown) end)
+	closeBtn.MouseButton1Click:Connect(function() setShown(false) end)
+
+	UserInputService.InputBegan:Connect(function(i, gp)
+		if not gp and i.KeyCode == Enum.KeyCode.RightShift then setShown(not shown) end
+	end)
+
+	task.defer(function() setShown(true) end)
+
+	return WindowAPI
+end
+
+return Library
