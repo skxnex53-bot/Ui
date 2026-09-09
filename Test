@@ -178,7 +178,7 @@ local function makeYinYang(parent, size, pos, spin, z)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		ZIndex = z,
 		BackgroundTransparency = 1,
-		Image = "rbxthumb://type=Asset&id=81625827158162&w=420&h=420",
+		Image = "rbxthumb://type=Asset&id=107727571312716&w=420&h=420",
 	})
 	return img
 end
